@@ -30,3 +30,5 @@ However, if any of these scripts generate minor errors, you can go through the s
 ### Additional Comments:
   1. For running the 3rd script, isoDetect, we set: parallel_section=3 and batch_size=5000. These can be changed based on your available GPU memory. Details are provided in that script.
   2. Our dataset is generated with Orbitrap MS. In our dataset the scans were at least 0.01 RT apart. That means, the datapoints were at least 0.01 minute apart from each other. So they were like 10.02 min, 10.05 min, 10.7 min... along RT axis. So we actually hardcoded the minimum RT distance as RT_unit=0.01. In your case, if the points are closer along RT axis, like: 10.0234, 10.024, 10.027 ... Then that 'RT_unit' value should be changed in the scripts accordingly.
+  
+### *** Please cite the paper if you are using this project *** 
