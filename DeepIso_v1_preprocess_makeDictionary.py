@@ -17,7 +17,7 @@ current_path=os.system("pwd")
 datapath=current_path+'/DeepIsoV1/data/' 
 rawdata=current_path+'/DeepIsoV1/rawdata/'
 modelpath=current_path+'/DeepIsoV1/model/'
-file_name=sys.arg[1]
+file_name=sys.argv[1]
 
 #################################################################
 print('reading raw data for %s'%file_name)
