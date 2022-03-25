@@ -31,9 +31,9 @@ import os
 current_path=os.system("pwd")
 datapath=current_path+'/DeepIsoV1/data/'  
 modelpath=current_path+'/DeepIsoV1/model/'
-file_name=sys.arg[1]
-batch_size=int(sys.arg[2]) #5000
-parallel_section=int(sys.arg[3]) # total number of slices to process on parallel
+file_name=sys.argv[1]
+batch_size=int(sys.argv[2]) #5000
+parallel_section=int(sys.argv[3]) # total number of slices to process on parallel
 segment= int(sys.argv[4]) # if the previous parameter is set to 3, then this parameter should be something 0/1/2 
 gpu_index=sys.argv[5]
 
