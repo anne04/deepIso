@@ -69,7 +69,7 @@ temp_ms1=0
 mz_resolution=2
 RT_list = np.sort(list(RT_mz_I_dict.keys()))
 max_RT=RT_list[len(RT_list)-1]
-min_RT=10    
+min_RT=RT_list[0]
 
 sorted_mz_list=[]
 RT_index=dict()
