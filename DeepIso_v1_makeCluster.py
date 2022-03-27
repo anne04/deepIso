@@ -18,7 +18,7 @@ import os
 current_path=os.system("pwd")
 datapath=current_path+'/DeepIsoV1/data/'  
 modelpath=current_path+'/DeepIsoV1/model/'
-file_name=sys.arg[1]
+file_name=sys.argv[1]
 
 
 ##############################################################
