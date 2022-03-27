@@ -22,8 +22,8 @@ import os
 current_path=os.system("pwd")
 datapath=current_path+'/DeepIsoV1/data/'  
 modelpath=current_path+'/DeepIsoV1/model/'
-file_name=sys.arg[1]
-batch_size=int(sys.arg[2]) #500
+file_name=sys.argv[1]
+batch_size=int(sys.argv[2]) #500
 
 ####################### scannnig parameter ##########
 isotope_gap=np.zeros((10))
@@ -162,7 +162,7 @@ temp_ms1=0
 mz_resolution=2
 RT_list = np.sort(list(RT_mz_I_dict.keys()))
 max_RT=RT_list[len(RT_list)-1]
-min_RT=10    
+min_RT=RT_list[0] #10    
 
 sorted_mz_list=[]
 RT_index=dict()
