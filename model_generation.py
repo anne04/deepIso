@@ -1,6 +1,13 @@
+# The original script was developed for Tensorflow Version 1
+# To make the script compatible with newer versions, we have commented out line 6, and use line 7 and line 8
+# Also line 152 is commented out to avoid version problems. 
+# So if you need to retrain this model, then you may need to change the script according to the newer versions
+
 from __future__ import division
 from __future__ import print_function
-import tensorflow as tf
+# import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import numpy as np
 import os
 ########## file run parameters #################################
@@ -144,7 +151,7 @@ class isoGrouping_model:
 
                 
             self.total_loss = tf.reduce_mean(self.loss)
-            self.train_step = tf.train.AdagradOptimizer(self.learn_rate).minimize(self.total_loss)
+            #self.train_step = tf.train.AdagradOptimizer(self.learn_rate).minimize(self.total_loss)
 
         config=tf.ConfigProto(log_device_placement=True)
         config.gpu_options.allow_growth = True
