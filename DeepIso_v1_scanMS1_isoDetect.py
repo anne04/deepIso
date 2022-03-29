@@ -13,9 +13,15 @@ If your GPU allows processing of other two slices as well then you should also p
 nohup python -u DeepIso_v1_scanMS1_isoDetect.py ABC 5000 3 1 3 > output_isoGrouping_1.log &
 nohup python -u DeepIso_v1_scanMS1_isoDetect.py ABC 5000 3 2 3 > output_isoGrouping_2.log &
 '''
+# The original script was developed for Tensorflow Version 1
+# To make the script compatible with newer versions, we have commented out line 22, and use line 23 and line 24
+# Also line 152 is commented out to avoid version problems. 
+# So if you need to retrain this model, then you may need to change the script according to the newer versions
 from __future__ import division
 from __future__ import print_function
-import tensorflow as tf
+# import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 #import math
 from time import time
 import pickle
