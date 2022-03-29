@@ -1,4 +1,6 @@
-# without an extra blank window+eff
+# consecutive scan along RT axis
+# The original script was developed for Tensorflow Version 1
+# So if you need to retrain this model, then you may need to change the script according to the newer versions
 from __future__ import print_function, division
 import numpy as np
 import tensorflow as tf
