@@ -1,8 +1,7 @@
 # The original script was developed for Tensorflow Version 1
-# To make the script compatible with newer versions, we have commented out line 6, and use line 7 and line 8
-# Also line 152 is commented out to avoid version problems. 
+# To make the script compatible with newer versions, we have commented out line 7, and use line 8 and line 9
+# Also line 153 is commented out to avoid version problems. 
 # So if you need to retrain this model, then you may need to change the script according to the newer versions
-
 from __future__ import division
 from __future__ import print_function
 # import tensorflow as tf
