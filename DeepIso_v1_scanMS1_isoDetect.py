@@ -15,7 +15,7 @@ nohup python -u DeepIso_v1_scanMS1_isoDetect.py ABC 5000 3 2 3 > output_isoGroup
 '''
 # The original script was developed for Tensorflow Version 1
 # To make the script compatible with newer versions, we have commented out line 22, and use line 23 and line 24
-# Also line 152 is commented out to avoid version problems. 
+# Also training step line 146 is commented out to avoid version problems. 
 # So if you need to retrain this model, then you may need to change the script according to the newer versions
 from __future__ import division
 from __future__ import print_function
@@ -143,7 +143,7 @@ with tf.device('/gpu:'+gpu_index):
         
     considered_loss=tf.multiply(sample_weight, loss)    
     total_loss=tf.reduce_sum(considered_loss) / tf.to_float(tf.reduce_sum(sample_weight))
-    train_step = tf.train.AdagradOptimizer(.01).minimize(total_loss)
+    #train_step = tf.train.AdagradOptimizer(.01).minimize(total_loss)
 
 config=tf.ConfigProto(log_device_placement=True)
 config.gpu_options.allow_growth = True
