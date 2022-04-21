@@ -1,14 +1,15 @@
 # consecutive scan along RT axis
-# The original script was developed for Tensorflow Version 1
-# So if you need to retrain this model, then you may need to change the script according to the newer versions
 from __future__ import print_function, division
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
+#import tensorflow as tf
 #import matplotlib.pyplot as plt
 import pickle
 #import math
 from time import time
-#import sys
+import sys
 import copy
 
 isotope_gap=np.zeros((10))
@@ -27,8 +28,8 @@ isotope_gap[9]=11
 num_epochs= 55
 learn_rate= 0.05 #run2 had learn_rate=0.02
 batch_size=128
-log_no='fcrnn_isoDetect_v2_lrp05_run4' #'fcrnn_isoDetect_v2_lrp05_run2'
-  #run2 had learn_rate=0.02
+log_no= 'thesis_fcrnn_isoDetect_v2_lrp05_fold2_run2' #'fcrnn_isoDetect_v2_lrp05_f2r2r2' #'fcrnn_isoDetect_v2_lrp05_run2'
+model_load='fcrnn_isoDetect_v2_lrp05' #'fcrnn_isoDetect_v2_lrp05_f2r2r1'  #run2 had learn_rate=0.02
 activation_func=2
 val_start=0
 #
@@ -46,18 +47,51 @@ RT_window=15
 mz_window=211
 num_class=10
 ############## load data #################
-modelpath='ENTER the path to save the model'
-datapath='ENTER the path to load the training data from'    
+modelpath='/data/fzohora/dilution_series_syn_pep/model/'
+datapath='/data/fzohora/dilution_series_syn_pep/'      #'/data/fzohora/water/' #'/media/anne/Study/study/PhD/bsi/update/data/water/'  #
 
-dataname=['130124_dilA_10_01', '130124_dilA_10_02', '130124_dilA_10_03', '130124_dilA_10_04', '130124_dilA_9_01', '130124_dilA_9_02', '130124_dilA_9_03', '130124_dilA_9_04', '130124_dilA_11_01', '130124_dilA_11_02', '130124_dilA_11_03', '130124_dilA_11_04', '130124_dilA_12_01', '130124_dilA_12_02', '130124_dilA_12_03', '130124_dilA_12_04'] 
-
+dataname=['130124_dilA_1_01', '130124_dilA_1_02', '130124_dilA_1_03', '130124_dilA_1_04', 
+'130124_dilA_5_01', '130124_dilA_5_02', '130124_dilA_5_03', '130124_dilA_5_04', 
+'130124_dilA_6_01', '130124_dilA_6_02', '130124_dilA_6_03', '130124_dilA_6_04', 
+'130124_dilA_7_01', '130124_dilA_7_02', '130124_dilA_7_03', '130124_dilA_7_04'] 
+negative_data='130124_dilA_11_01'
 
 f=open(datapath+'/cut_features/'+dataname[4]+'_scanMS1_stripe_dataset', 'rb')
 feature_set, label_set, sequence_length, map_to_peaks, real_class_train=pickle.load(f)
 f.close()   
 
+#for data_index in range (5, len(dataname)):
+#    f=open(datapath+'/cut_features/'+dataname[data_index]+'_scanMS1_stripe_dataset', 'rb')
+#    feature_set_next, label_set_next, sequence_length_next, map_to_peaks_next, real_class_next=pickle.load(f)
+#    f.close()   
+#
+#    feature_set.extend(copy.deepcopy(feature_set_next))
+#    label_set.extend(copy.deepcopy(label_set_next))
+#    sequence_length.extend(copy.deepcopy(sequence_length_next))
+#    real_class_train=real_class_train+real_class_next
 for data_index in range (5, len(dataname)):
     f=open(datapath+'/cut_features/'+dataname[data_index]+'_scanMS1_stripe_dataset', 'rb')
+    feature_set_next, label_set_next, sequence_length_next, map_to_peaks_next, real_class_next=pickle.load(f)
+    f.close()   
+    for i in range (0, len(feature_set_next)):
+        charge=np.max(label_set_next[i])
+        if charge==5:            
+            repeat_time=5
+        elif charge==4:
+            repeat_time=2
+        else:
+            repeat_time=1
+        for count in range (0,repeat_time):
+            feature_set.append(np.copy(feature_set_next[i]))
+            label_set.append(np.copy(label_set_next[i]))
+            sequence_length.append(np.copy(sequence_length_next[i]))
+            for j in range (0, label_set_next[i].shape[0]):
+                real_class_train[int(label_set_next[i][j])]=real_class_train[int(label_set_next[i][j])]+1 
+                
+print('+ve data:%d'%len(feature_set))
+####### add Dino+PX #########
+for data_index in range (4, len(dataname)-1):
+    f=open(datapath+'/cut_features/'+dataname[data_index]+'_PX_Dino_scanMS1_stripe_dataset', 'rb')
     feature_set_next, label_set_next, sequence_length_next, map_to_peaks_next, real_class_next=pickle.load(f)
     f.close()   
 
@@ -66,24 +100,10 @@ for data_index in range (5, len(dataname)):
     sequence_length.extend(copy.deepcopy(sequence_length_next))
     real_class_train=real_class_train+real_class_next
 
-#for data_index in range (8, 10):
-#    f=open(datapath+'/cut_features/'+dataname[data_index]+'_scanMS1_stripe_dataset', 'rb')
-#    feature_set_next, label_set_next, sequence_length_next, map_to_peaks_next, real_class_next=pickle.load(f)
-#    f.close()   
-#    for i in range (0, len(feature_set_next)):
-#        charge=np.max(label_set_next[i])
-#        if charge==2 or charge==3:
-#            continue
-#        else:            
-#            feature_set.append(np.copy(feature_set_next[i]))
-#            label_set.append(np.copy(label_set_next[i]))
-#            sequence_length.append(np.copy(sequence_length_next[i]))
-#            for j in range (0, label_set_next[i].shape[0]):
-#                real_class_train[int(label_set_next[i][j])]=real_class_train[int(label_set_next[i][j])]+1
-
 print('+ve data:%d'%len(feature_set))
 
-poz_data=len(feature_set)
+
+####### val ##########
 
 f=open(datapath+'/cut_features/'+dataname[2]+'_scanMS1_stripe_dataset', 'rb')
 feature_set_val, label_set_val, sequence_length_val, map_to_peaks_val, real_class_val=pickle.load(f)
@@ -98,9 +118,44 @@ sequence_length_val.extend(copy.deepcopy(sequence_length_val_next))
 real_class_train_val=real_class_train+real_class_val_next
 
 
+######## add Dino+PX ##########
+f=open(datapath+'/cut_features/'+dataname[0]+'_PX_Dino_scanMS1_stripe_dataset', 'rb')
+feature_set_val_next, label_set_val_next,  sequence_length_val_next, map_to_peaks_val_next, real_class_val_next=pickle.load(f)
+f.close()   
+
+feature_set_val.extend(copy.deepcopy(feature_set_val_next))
+label_set_val.extend(copy.deepcopy(label_set_val_next))
+sequence_length_val.extend(copy.deepcopy(sequence_length_val_next))
+real_class_train_val=real_class_train+real_class_val_next
+
+f=open(datapath+'/cut_features/'+dataname[1]+'_PX_Dino_scanMS1_stripe_dataset', 'rb')
+feature_set_val_next, label_set_val_next,  sequence_length_val_next, map_to_peaks_val_next, real_class_val_next=pickle.load(f)
+f.close()   
+
+feature_set_val.extend(copy.deepcopy(feature_set_val_next))
+label_set_val.extend(copy.deepcopy(label_set_val_next))
+sequence_length_val.extend(copy.deepcopy(sequence_length_val_next))
+real_class_train_val=real_class_train+real_class_val_next
+
+
+poz_data=len(feature_set)
+####################Only PX_DINO val############################################
+f=open(datapath+'/cut_features/'+dataname[2]+'_PX_Dino_scanMS1_stripe_dataset', 'rb')
+feature_set_retrain, label_set_retrain, sequence_length_retrain, map_to_peaks_retrain, real_class_retrain=pickle.load(f)
+f.close()   
+f=open(datapath+'/cut_features/'+dataname[3]+'_PX_Dino_scanMS1_stripe_dataset', 'rb')
+feature_set_val_next, label_set_val_next,  sequence_length_val_next, map_to_peaks_val_next, real_class_val_next=pickle.load(f)
+f.close()   
+
+feature_set_retrain.extend(copy.deepcopy(feature_set_val_next))
+label_set_retrain.extend(copy.deepcopy(label_set_val_next))
+sequence_length_retrain.extend(copy.deepcopy(sequence_length_val_next))
+real_class_retrain=real_class_retrain+real_class_val_next
+
+
 ################################################################
 
-f=open(datapath+'cut_features/'+dataname[8]+'_zerodata_stripe', 'rb')
+f=open(datapath+'cut_features/'+negative_data+'_zerodata_stripe', 'rb')
 feature_set_next, label_set_next, sequence_length_next, map_to_peaks_next, real_class_next = pickle.load(f)
 f.close()
 total_zero=len(feature_set_next) #100000 #10000
@@ -119,11 +174,11 @@ label_set_val.extend(copy.deepcopy(label_set_next[num_zero_stripe:num_zero_strip
 sequence_length_val.extend(copy.deepcopy(sequence_length_next[num_zero_stripe:num_zero_stripe+num_zero_stripe_val]))
 ######### Negative data: add noisy data############################################################
 print('Noisy data')
-f=open(datapath+'cut_features/'+dataname[8]+'_zerodata_TN_stripe', 'rb')
+f=open(datapath+'cut_features/'+negative_data+'_zerodata_TN_stripe', 'rb')
 feature_set_next, label_set_next, sequence_length_next, map_to_peaks_next, real_class_next=pickle.load(f)
 f.close()
 # repeat 5 times to give 5x weight
-for i in range (0, 15):    
+for i in range (0, 11):    
     feature_set.extend(copy.deepcopy(feature_set_next[0:int(len(feature_set_next)*0.8)]))
     label_set.extend(copy.deepcopy(label_set_next[0:int(len(feature_set_next)*0.8)]))
     sequence_length.extend(copy.deepcopy(sequence_length_next[0:int(len(feature_set_next)*0.8)]))
@@ -136,11 +191,11 @@ feature_set_val.extend(copy.deepcopy(feature_set_next[int(len(feature_set_next)*
 label_set_val.extend(copy.deepcopy(label_set_next[int(len(feature_set_next)*0.8): ]))
 sequence_length_val.extend(copy.deepcopy(sequence_length_next[int(len(feature_set_next)*0.8): ]))
 ######### Negative data: add data with long gap before ############################################################
-f=open(datapath+'cut_features/'+dataname[8]+'_zerodata_SB_stripe', 'rb')
+f=open(datapath+'cut_features/'+negative_data+'_zerodata_SB_stripe', 'rb')
 feature_set_next, label_set_next, sequence_length_next, map_to_peaks_next, real_class_next=pickle.load(f)
 f.close()
 # repeat 5 times to give 5x weight
-for i in range (0, 15):    
+for i in range (0, 11):    
     feature_set.extend(copy.deepcopy(feature_set_next[0:int(len(feature_set_next)*0.8)]))
     label_set.extend(copy.deepcopy(label_set_next[0:int(len(feature_set_next)*0.8)]))
     sequence_length.extend(copy.deepcopy(sequence_length_next[0:int(len(feature_set_next)*0.8)]))
@@ -152,11 +207,11 @@ feature_set_val.extend(copy.deepcopy(feature_set_next[int(len(feature_set_next)*
 label_set_val.extend(copy.deepcopy(label_set_next[int(len(feature_set_next)*0.8): ]))
 sequence_length_val.extend(copy.deepcopy(sequence_length_next[int(len(feature_set_next)*0.8): ]))
 ########Negative data: add data with long gap after#####################################
-f=open(datapath+'cut_features/'+dataname[8]+'_zerodata_EB_stripe', 'rb')
+f=open(datapath+'cut_features/'+negative_data+'_zerodata_EB_stripe', 'rb')
 feature_set_next, label_set_next, sequence_length_next, map_to_peaks_next, real_class_next=pickle.load(f)
 f.close()
 # repeat 5 times to give 5x weight
-for i in range (0, 15):    
+for i in range (0, 11):    
     feature_set.extend(copy.deepcopy(feature_set_next[0:int(len(feature_set_next)*0.8)]))
     label_set.extend(copy.deepcopy(label_set_next[0:int(len(feature_set_next)*0.8)]))
     sequence_length.extend(copy.deepcopy(sequence_length_next[0:int(len(feature_set_next)*0.8)]))
@@ -168,11 +223,11 @@ feature_set_val.extend(copy.deepcopy(feature_set_next[int(len(feature_set_next)*
 label_set_val.extend(copy.deepcopy(label_set_next[int(len(feature_set_next)*0.8): ]))
 sequence_length_val.extend(copy.deepcopy(sequence_length_next[int(len(feature_set_next)*0.8): ]))
 #####################Total Noise###########################################
-f=open(datapath+'cut_features/'+dataname[8]+'_zerodata_TB_stripe', 'rb')
+f=open(datapath+'cut_features/'+negative_data+'_zerodata_TB_stripe', 'rb')
 feature_set_next, label_set_next, sequence_length_next, map_to_peaks_next, real_class_next=pickle.load(f)
 f.close()
 # repeat 5 times to give 5x weight
-for i in range (0, 15):    
+for i in range (0, 11):    
     feature_set.extend(copy.deepcopy(feature_set_next[0:int(len(feature_set_next)*0.8)]))
     label_set.extend(copy.deepcopy(label_set_next[0:int(len(feature_set_next)*0.8)]))
     sequence_length.extend(copy.deepcopy(sequence_length_next[0:int(len(feature_set_next)*0.8)]))
@@ -189,7 +244,7 @@ for i in range(0, real_class_train.shape[0]):
     print('z=%d is %d'%(i, real_class_train[i]))
     
 ############################
-print('-ve data:%d'% (len(feature_set)-poz_data))
+#print('-ve data:%d'% (len(feature_set)-poz_data))
 #########Create Log##############################################################
 logfile=open(modelpath+log_no+'.csv', 'wb')
 logfile.close()
@@ -214,90 +269,73 @@ def max_pool_2x2(x):
     return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
 #15 x 211
-batchX_placeholder = tf.placeholder(tf.float32, [None, RT_window, mz_window]) #image block to consider for one run of training by back propagation
-sample_weight = tf.placeholder(tf.float32, [None]) #image block to consider for one run of training by back propagation
-keep_prob = tf.placeholder(tf.float32)
+with tf.device('/gpu:'+'1'): 
+    batchX_placeholder = tf.placeholder(tf.float32, [None, RT_window, mz_window]) #image block to consider for one run of training by back propagation
+    sample_weight = tf.placeholder(tf.float32, [None]) #image block to consider for one run of training by back propagation
+    keep_prob = tf.placeholder(tf.float32)
 
-W_conv0 = weight_variable([8, 10 , 1, 8], 'W_conv0')#v10: 23x 202
-b_conv0 = bias_variable([8], 'b_conv0') #for each of feature maps
+    W_conv0 = weight_variable([8, 10 , 1, 8], 'W_conv0')#v10: 23x 202
+    b_conv0 = bias_variable([8], 'b_conv0') #for each of feature maps
 
-W_conv1 = weight_variable([4, 10 , 8, 16], 'W_conv1')# #20x193
-b_conv1 = bias_variable([16], 'b_conv1') #for each of feature maps
+    W_conv1 = weight_variable([4, 10 , 8, 16], 'W_conv1')# #20x193
+    b_conv1 = bias_variable([16], 'b_conv1') #for each of feature maps
 
-W_conv2 = weight_variable([4, 8, 16, 32],  'W_conv2')  #18x186
-b_conv2 = bias_variable([32], 'b_conv2') 
-
-#W_conv3 = weight_variable([2, 4, 32, 32], 'W_conv3')  #16x183
-#b_conv3 = bias_variable([32], 'b_conv3')
-
-#W_fc1 = weight_variable([1 * 183 * 32, 264], 'W_fc1')
-#b_fc1 = bias_variable([264], 'b_fc1')
-
-W_fc1 = weight_variable([2 * 186 * 32, 264], 'W_fc1')
-b_fc1 = bias_variable([264], 'b_fc1')
-
-W_out = weight_variable([264, fc_size], 'W_out')
-b_out = bias_variable([fc_size], 'b_out')
+    W_conv2 = weight_variable([4, 8, 16, 32],  'W_conv2')  #18x186
+    b_conv2 = bias_variable([32], 'b_conv2') 
 
 
-batchY_placeholder = tf.placeholder(tf.int32, [None])
-init_state = tf.placeholder(tf.float32, [None, state_size])
+    W_fc1 = weight_variable([2 * 186 * 32, 264], 'W_fc1')
+    b_fc1 = bias_variable([264], 'b_fc1')
 
-W = tf.Variable(np.random.rand(state_size, state_size), dtype=tf.float32) 
-
-W2 = tf.Variable(np.random.rand(state_size, num_class),dtype=tf.float32) #final output
-b2 = tf.Variable(np.zeros((1,num_class)), dtype=tf.float32) #final output
+    W_out = weight_variable([264, fc_size], 'W_out')
+    b_out = bias_variable([fc_size], 'b_out')
 
 
-# Forward pass
-current_state = init_state
+    batchY_placeholder = tf.placeholder(tf.int32, [None])
+    init_state = tf.placeholder(tf.float32, [None, state_size])
 
-##############################
-x_image = tf.reshape(batchX_placeholder[:, :, :], [-1, RT_window, mz_window, 1]) #
+    W = tf.Variable(np.random.rand(state_size, state_size), dtype=tf.float32) 
+
+    W2 = tf.Variable(np.random.rand(state_size, num_class),dtype=tf.float32) #final output
+    b2 = tf.Variable(np.zeros((1,num_class)), dtype=tf.float32) #final output
+
+
+    # Forward pass
+    current_state = init_state
+
+    ##############################
+    x_image = tf.reshape(batchX_placeholder[:, :, :], [-1, RT_window, mz_window, 1]) #
+            
+    if (activation_func==1):       
+        print('tor matha')
+    else:   
+        h_conv0 = tf.tanh(conv2d(x_image, W_conv0) + b_conv0) # now the input is: (15-8+1) x (211-22+1) x 16 = 8 x 190 x 16
+        h_conv1 = tf.tanh(conv2d(h_conv0, W_conv1) + b_conv1) # now the input is: (8-4+1) x (190-6+1) x 16 = 5 x 185 x 16
+        h_conv2 = tf.tanh(conv2d(h_conv1, W_conv2) + b_conv2) # now the input is: (5-3+1) x (185-4+1) x 8 = 3  x 182  x 8
+    #    h_conv3 = tf.tanh(conv2d(h_conv2, W_conv3) + b_conv3) #3-3+1 x 182-3+1 x 8 = 1 x 180 x 8
+        h_conv2_flat = tf.reshape(h_conv2, [-1, 2 * 186  * 32])
+        h_conv2_flat_drop = tf.nn.dropout(h_conv2_flat, keep_prob)
+        h_fc1 = tf.tanh(tf.matmul(h_conv2_flat_drop, W_fc1) + b_fc1) # finally giving the output
+        h_fc1_dropout=tf.nn.dropout(h_fc1, keep_prob)
+    #        h_fc2 = tf.tanh(tf.matmul(h_fc1, W_fc2) + b_fc2) # finally giving the output
+    #        h_fc3 = tf.nn.relu(tf.matmul(h_fc2, W_fc3) + b_fc3)
+        y_conv = tf.tanh(tf.matmul(h_fc1_dropout, W_out) + b_out) # finally giving the output
+        ##############################
+        current_FC  = y_conv #tf.nn.dropout(y_conv, keep_prob) # [batch_size, fc_size])
+        weighted_state = tf.matmul(current_state, W) # Broadcasted addition #shape?? # EDIT
+        next_state = tf.tanh(weighted_state + current_FC)  # Broadcasted addition #shape?? # EDIT
         
-if (activation_func==1):       
-    h_conv0 = tf.nn.relu(conv2d(x_image, W_conv0) + b_conv0) # now the input is: (15-8+1) x (211-22+1) x 16 = 8 x 190 x 16
-    h_conv1 = tf.nn.relu(conv2d(h_conv0, W_conv1) + b_conv1) # now the input is: (8-4+1) x (190-6+1) x 16 = 5 x 185 x 16
-    h_conv2 = tf.nn.relu(conv2d(h_conv1, W_conv2) + b_conv2) # now the input is: (5-3+1) x (185-4+1) x 8 = 3  x 182  x 8
-#    h_conv3 = tf.nn.relu(conv2d(h_conv2, W_conv3) + b_conv3) #3-3+1 x 182-3+1 x 8 = 1 x 180 x 8
-    h_conv2_flat = tf.reshape(h_conv2, [-1, 2 * 186  * 32])
-    h_conv2_flat_drop = tf.nn.dropout(h_conv2_flat, keep_prob)
-    h_fc1 = tf.nn.relu(tf.matmul(h_conv2_flat_drop, W_fc1) + b_fc1) # finally giving the output
-#        h_fc2 = tf.nn.relu(tf.matmul(h_fc1, W_fc2) + b_fc2) # finally giving the output
-#        h_fc3 = tf.nn.relu(tf.matmul(h_fc2, W_fc3) + b_fc3)
-    y_conv = tf.nn.relu(tf.matmul(h_fc1, W_out) + b_out) # finally giving the output
-    ##############################
-    current_FC  =  tf.nn.dropout(y_conv, keep_prob) # [batch_size, fc_size])
-    weighted_state = tf.matmul(current_state, W) # Broadcasted addition #shape?? # EDIT
-    next_state = tf.nn.relu(weighted_state + current_FC)  # Broadcasted addition #shape?? # EDIT
-else:   
-    h_conv0 = tf.tanh(conv2d(x_image, W_conv0) + b_conv0) # now the input is: (15-8+1) x (211-22+1) x 16 = 8 x 190 x 16
-    h_conv1 = tf.tanh(conv2d(h_conv0, W_conv1) + b_conv1) # now the input is: (8-4+1) x (190-6+1) x 16 = 5 x 185 x 16
-    h_conv2 = tf.tanh(conv2d(h_conv1, W_conv2) + b_conv2) # now the input is: (5-3+1) x (185-4+1) x 8 = 3  x 182  x 8
-#    h_conv3 = tf.tanh(conv2d(h_conv2, W_conv3) + b_conv3) #3-3+1 x 182-3+1 x 8 = 1 x 180 x 8
-    h_conv2_flat = tf.reshape(h_conv2, [-1, 2 * 186  * 32])
-    h_conv2_flat_drop = tf.nn.dropout(h_conv2_flat, keep_prob)
-    h_fc1 = tf.tanh(tf.matmul(h_conv2_flat_drop, W_fc1) + b_fc1) # finally giving the output
-    h_fc1_dropout=tf.nn.dropout(h_fc1, keep_prob)
-#        h_fc2 = tf.tanh(tf.matmul(h_fc1, W_fc2) + b_fc2) # finally giving the output
-#        h_fc3 = tf.nn.relu(tf.matmul(h_fc2, W_fc3) + b_fc3)
-    y_conv = tf.tanh(tf.matmul(h_fc1_dropout, W_out) + b_out) # finally giving the output
-    ##############################
-    current_FC  = y_conv #tf.nn.dropout(y_conv, keep_prob) # [batch_size, fc_size])
-    weighted_state = tf.matmul(current_state, W) # Broadcasted addition #shape?? # EDIT
-    next_state = tf.tanh(weighted_state + current_FC)  # Broadcasted addition #shape?? # EDIT
-    
 
 
-logit = tf.matmul(next_state, W2) + b2  #Broadcasted addition
-#predictions_series = [tf.nn.softmax(logits) for logits in logits_series]
-predictions_series = tf.argmax(tf.nn.softmax(logit), 1) 
+    logit = tf.matmul(next_state, W2) + b2  #Broadcasted addition
+    #predictions_series = [tf.nn.softmax(logits) for logits in logits_series]
+    predictions_series = tf.argmax(tf.nn.softmax(logit), 1) 
 
-loss=tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logit, labels=batchY_placeholder[:]) # [batch_size,loss]  
-    
-considered_loss=tf.multiply(sample_weight, loss)    
-total_loss=tf.reduce_sum(considered_loss) / tf.to_float(tf.reduce_sum(sample_weight))
-train_step = tf.train.AdagradOptimizer(.01).minimize(total_loss)
+    loss=tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logit, labels=batchY_placeholder[:]) # [batch_size,loss]  
+        
+    considered_loss=tf.multiply(sample_weight, loss)    
+    total_loss=tf.reduce_sum(considered_loss) / tf.to_float(tf.reduce_sum(sample_weight))
+    train_step = tf.train.AdagradOptimizer(.01).minimize(total_loss)
 
 
 ####################################################################################
@@ -310,13 +348,16 @@ sess = tf.Session(config=config)
 #sess.run(tf.global_variables_initializer())
 saver = tf.train.Saver()
 #saver.save(sess, modelpath+log_no+'_init.ckpt')
+#saver.restore(sess, modelpath+model_load+'_init.ckpt')
+#saver.save(sess, modelpath+log_no+'_init.ckpt')
 saver.restore(sess, modelpath+log_no+'_best_sen_model.ckpt')
+#saver.restore(sess, modelpath+log_no+'_best_model.ckpt')
 ########################################
 print('starting validation')
 accuracy_measure=np.zeros((1, num_class+1))
 confusion_matrix=np.zeros((num_class, num_class))
 real_class=np.zeros((num_class))                    
-batch_size_val=10000 #len(feature_set_val) #
+batch_size_val=2000 #len(feature_set_val) #
 count_batch_val=0
 avg_loss_val=0
 
@@ -388,9 +429,9 @@ min_loss=avg_loss_val
 
 ################ training ############################################################
 saver.restore(sess, modelpath+log_no+'_epoch.ckpt')
-val_start=95
+val_start=115
 with sess.as_default():    
-    for epoch_idx in range(79,100):
+    for epoch_idx in range(0,200):
         # go to each feature
         start_time=time()
         print("epoch", epoch_idx)
@@ -449,12 +490,13 @@ with sess.as_default():
             avg_loss=avg_loss+batch_loss/total_frames_var
             #one batch is done 
 ################################################################################                
-            if (epoch_idx>=val_start and batch_idx%10==0) or (batch_idx==number_of_batch-1 and epoch_idx%5==0):
+            #if (epoch_idx>=val_start and batch_idx%10==0) or 
+            if(batch_idx==number_of_batch-1 and epoch_idx%1==0):
                 print('starting validation')
-                accuracy_measure=np.zeros((1, num_class+1))
+                accuracy_measure=np.zeros((1, num_class+3))
                 confusion_matrix=np.zeros((num_class, num_class))
                 real_class=np.zeros((num_class))                    
-                batch_size_val=10000 #len(feature_set_val) #
+                batch_size_val=5000 #len(feature_set_val) #
                 count_batch_val=0
                 avg_loss_val=0
                 
@@ -517,11 +559,18 @@ with sess.as_default():
 
                 
                 accuracy_measure[0, num_class]=avg_loss_val
-                avg_sensitivity=sum(accuracy_measure[0, 0:6])/num_class
+                accuracy_measure[0, num_class+1]=avg_loss/count_batch
+
+
+                avg_sensitivity=sum(accuracy_measure[0, 0:6])/6 #0 to charge 5, num_class
                 print('for epoch %d, batch %d, avg loss %g, avg sensitivity %g'%(epoch_idx,batch_idx, avg_loss_val, avg_sensitivity) )    
+                accuracy_measure[0, num_class+2]=avg_sensitivity
+
+
                 logfile=open(modelpath+log_no+'.csv', 'ab')
                 np.savetxt(logfile,accuracy_measure, delimiter=',')
                 logfile.close() 
+
                 for i in range (0, num_class):
                     print("avg accuracy for z=%d is %g, amount %d"%(i, confusion_matrix[i, i]/real_class[i], real_class[i]))
 
@@ -542,6 +591,76 @@ with sess.as_default():
         elapsed_time=time()-start_time
         print('elapsed time:%g, total_batch %d, avg_loss for training %g'%(elapsed_time, count_batch, avg_loss/count_batch))
         saver.save(sess, modelpath+log_no+'_epoch.ckpt')
+
+
+
+#############
+########################################
+print('starting validation')
+accuracy_measure=np.zeros((1, num_class+1))
+confusion_matrix=np.zeros((num_class, num_class))
+real_class=np.zeros((num_class))                    
+batch_size=5000 #len(feature_set_val) #
+count_batch=0
+avg_loss=0
+
+total_feature=len(feature_set_retrain)
+number_of_batch=total_feature//batch_size
+count_batch=count_batch+number_of_batch
+_current_state = np.zeros((batch_size, state_size))
+ftr=0
+for batch_idx in range (0,  number_of_batch):
+    start_ftr=ftr
+    batch_ms1=np.zeros((batch_size,total_frames_var, RT_window,mz_window))
+    batch_label=np.zeros((batch_size, total_frames_var)) 
+    batch_prediction=np.zeros((batch_size, total_frames_var)) 
+    sequence_length_mask=np.zeros((batch_size, total_frames_var))  
+    count=0
+    while count!=batch_size:
+        for i in range (0, sequence_length_retrain[ftr]):
+            batch_ms1[count, i, :, :]=np.copy(feature_set_retrain[ftr][i:i+RT_window, :])
+        
+        batch_label[count, :]=np.copy(label_set_retrain[ftr])
+        sequence_length_mask[count,  0:sequence_length_retrain[ftr]]=1 #sequence_length[ftr]=[1-total_frames_var]
+        count=count+1
+        ftr=ftr+1
+        
+    # one batch is formed
+#                    _current_state_val = np.zeros((batch_size_val, state_size))               
+    for row_idx in range(0, total_frames_var): # total_hops_horizontal=87 in each hop, 6 windows are considered as truncated backprop length is 6
+        batchX = batch_ms1[:,row_idx,:,:]                    
+        batchY = batch_label[:,row_idx]                    
+        batch_weight=sequence_length_mask[:, row_idx]
+        _total_loss=0
+        if np.sum(batch_weight)==0:
+            break
+        
+        _total_loss, _current_state, _predictions_series = sess.run(
+            [total_loss, next_state, predictions_series],
+            feed_dict={
+                batchX_placeholder:batchX,
+                batchY_placeholder:batchY ,
+                init_state:_current_state, 
+                sample_weight:batch_weight, 
+                keep_prob:1.0
+            })                                        
+        
+        avg_loss=avg_loss+_total_loss
+        batch_prediction[:, row_idx]=_predictions_series[:]
+        
+    avg_loss=avg_loss/total_frames_var
+    for b in range (0, batch_size):
+        for row_idx in range (0, sequence_length[start_ftr+b]):
+            real_charge=int(batch_label[b, row_idx])
+            pred_charge=int(batch_prediction[b, row_idx])
+            real_class[real_charge]=real_class[real_charge]+1
+            confusion_matrix[real_charge, pred_charge]=confusion_matrix[real_charge, pred_charge]+1    
+
+    #one batch is done 
+avg_loss=avg_loss/number_of_batch    
+for i in range (0, num_class):
+    print("avg accuracy for z=%d is %g, amount %d"%(i, confusion_matrix[i, i]/real_class[i], real_class[i]))
+    accuracy_measure[0, i]=confusion_matrix[i, i]/real_class[i]
 
 
 
