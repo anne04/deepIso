@@ -476,6 +476,10 @@ print('making done')
 
 total_clusters=len(cluster_list)
 
+# now load the database search result. You can download it from 
+# here: https://drive.google.com/file/d/1u3Ka-RTo3CDVk_KFJg_wyxbomf2RTgg1/view?usp=drivesdk
+# We need this to save the model (during training) that gives detection of higher percentage identified peptides based on validation dataset.
+
 filename = datapath+'feature_list/'+dataname[validation_index]+'_peptide.csv' 
 rows = []
 csvfile=open(filename, 'r')
